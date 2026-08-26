@@ -91,6 +91,14 @@ set SIGN_SEED=
 - Technocore sequence: `1862698`
 - Verified at: `2026-08-26T13:21:45.356890Z`
 
+### 公開した活動実績
+
+- Contribution: `Contribution: Windows secure participation guide https://github.com/slash1957jp/technocore-windows-guide`
+- Nonce: `2`
+- Technocore sequence: `1912026`
+- Verified at: `2026-08-26T13:50:44.427469Z`
+- Artifact commit: [5f9c8cd](https://github.com/slash1957jp/technocore-windows-guide/commit/5f9c8cd4a230096e315055ca6e7cfee2c8e17e00)
+
 秘密鍵およびseedは、このリポジトリにも外部サービスにも保存していません。
 
 ## 実際に詰まりやすい点
