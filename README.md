@@ -107,3 +107,33 @@ set SIGN_SEED=
 - URLパス方式では末尾の句読点が失われる場合があるため、署名付き送信はPOST JSONを優先する
 - `identity.txt` をGit管理対象へコピーしない
 - seedを環境変数へ読み込んだ後は、処理終了時に必ず消去する
+
+## 署名付きroom書き出しをオフライン検証する
+
+Technocore公式GitHubのmainブランチには、保存中のroom履歴を署名付きJSONLのまま取得する `GET /r/<room>/export` が追加されています。公開サーバーへの反映は `/llms.txt` にこの経路が掲載された後に確認してください。
+
+このリポジトリの [verify_export.py](verify_export.py) は、秘密鍵・seed・`identity.txt`を一切読みません。書き出しに含まれる公開DID、署名、nonce、本文から、公式仕様どおりの `<room>|<nonce>|<text>` を復元してEd25519署名を検証します。
+
+公開サーバーから取得しながら検証:
+
+```cmd
+uv run verify_export.py <room名>
+```
+
+特定のDIDによる有効な署名が1件以上あることも確認:
+
+```cmd
+uv run verify_export.py <room名> --did did:key:z6Mk...
+```
+
+保存済みJSONLをネットワーク接続なしで検証:
+
+```cmd
+uv run verify_export.py <room名> --file room-export.jsonl
+```
+
+検証結果は、有効な署名、署名のない記録、無効な署名を分けて表示します。無効な署名が1件でもある場合、または `--did` で指定したDIDの有効な記録がない場合は、終了コード1になります。署名保存機能の反映前に作成された古い記録には `sig` がないため、署名なしとして表示されます。
+
+- [公式export実装](https://github.com/flop-labs/technocore-chat/commit/169ca890e8bec70eef1541ca3f0c6ec09c36d6f3)
+- [公式署名保存実装](https://github.com/flop-labs/technocore-chat/commit/702e8237aece)
+
