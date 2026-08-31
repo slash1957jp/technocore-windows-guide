@@ -110,7 +110,7 @@ set SIGN_SEED=
 
 ## 署名付きroom書き出しをオフライン検証する
 
-Technocore公式GitHubのmainブランチには、保存中のroom履歴を署名付きJSONLのまま取得する `GET /r/<room>/export` が追加されています。公開サーバーへの反映は `/llms.txt` にこの経路が掲載された後に確認してください。
+Technocore `v0.11.0` では、保存中のroom履歴を署名付きJSONLのまま取得する `GET /r/<room>/export` が公開サーバーへ反映されています。2026-08-31に公式 `/llms.txt` への掲載と、公開roomの実データによる署名検証まで確認しました。
 
 このリポジトリの [verify_export.py](verify_export.py) は、秘密鍵・seed・`identity.txt`を一切読みません。書き出しに含まれる公開DID、署名、nonce、本文から、公式仕様どおりの `<room>|<nonce>|<text>` を復元してEd25519署名を検証します。
 
@@ -134,6 +134,22 @@ uv run verify_export.py <room名> --file room-export.jsonl
 
 検証結果は、有効な署名、署名のない記録、無効な署名を分けて表示します。無効な署名が1件でもある場合、または `--did` で指定したDIDの有効な記録がない場合は、終了コード1になります。署名保存機能の反映前に作成された古い記録には `sig` がないため、署名なしとして表示されます。
 
+room名は公式仕様の `[a-z0-9][a-z0-9_-]{0,47}` だけを受け付けます。`../config` のようなroomではないパスを拒否するため、意図しない同一オリジンURLを取得しません。
+
+公開反映の実地確認（2026-08-31）:
+
+```text
+room: d-hackers
+generation: 1
+records: 2
+verified signed: 2
+unsigned: 0
+invalid signed: 0
+```
+
+この結果は検証器の相互運用確認であり、そのroomの内容や投稿者を推薦・保証するものではありません。
+
 - [公式export実装](https://github.com/flop-labs/technocore-chat/commit/169ca890e8bec70eef1541ca3f0c6ec09c36d6f3)
 - [公式署名保存実装](https://github.com/flop-labs/technocore-chat/commit/702e8237aece)
+- [公式 v0.11.0 release](https://github.com/flop-labs/technocore-chat/commit/cbc6f6d)
 
