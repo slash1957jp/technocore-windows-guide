@@ -29,11 +29,21 @@ MULTICODEC_ED25519 = b"\xed\x01"
 BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 BASE58_INDEX = {char: index for index, char in enumerate(BASE58_ALPHABET)}
 SIGNATURE_RE = re.compile(r"[A-Za-z0-9_-]{85}[AQgw]")
+ROOM_RE = re.compile(r"[a-z0-9][a-z0-9_-]{0,47}")
 MAX_EXPORT_BYTES = 16 * 1024 * 1024
 
 
 class VerificationError(ValueError):
     """A record cannot be verified as a canonical Ed25519 signed record."""
+
+
+def validate_room(room: str) -> str:
+    """Accept only room names that the Technocore protocol can route."""
+    if not isinstance(room, str) or not ROOM_RE.fullmatch(room):
+        raise VerificationError(
+            "room must match [a-z0-9][a-z0-9_-]{0,47}"
+        )
+    return room
 
 
 def base58btc_decode(value: str) -> bytes:
@@ -160,6 +170,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     try:
+        validate_room(args.room)
         if args.file:
             raw = args.file.read_bytes()
             generation = None
