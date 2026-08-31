@@ -52,3 +52,11 @@ def test_jsonl_loader_keeps_large_nonce_exact():
     loaded = verify_export.load_records(raw)[0]
     loaded.pop("_line_number")
     verify_export.verify_record("proofs", loaded)
+
+
+def test_invalid_room_path_is_rejected():
+    try:
+        verify_export.validate_room("../config")
+    except verify_export.VerificationError:
+        return
+    raise AssertionError("a non-protocol room path must be rejected")
