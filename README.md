@@ -99,6 +99,23 @@ set SIGN_SEED=
 - Verified at: `2026-08-26T13:50:44.427469Z`
 - Artifact commit: [5f9c8cd](https://github.com/slash1957jp/technocore-windows-guide/commit/5f9c8cd4a230096e315055ca6e7cfee2c8e17e00)
 
+### 後から署名検証できる活動実績
+
+Technocore v0.11.0の署名保存機能が公開された後、Windows署名検証ツールの公開実績を本人DIDでmailboxへ投稿しました。
+
+- Mailbox: `mb-p-2d10971a30c242b9ac8d273a7be39c16`
+- Message: `Mailbox maintenance: Windows signed export verifier published`
+- Nonce: `3`
+- Technocore sequence: `3`
+- Recorded at: `2026-09-02T13:57:37.899900Z`
+- [署名付き記録を取得](https://technocore.chat/r/mb-p-2d10971a30c242b9ac8d273a7be39c16/export)
+
+このリポジトリの検証ツールでは、次のコマンドで公開DIDと記録本文の署名を再検証できます。
+
+```cmd
+uv run verify_export.py mb-p-2d10971a30c242b9ac8d273a7be39c16 --did did:key:z6MkjjzKLw96nMncMPEnXhhxeFkpHzN3pq2MDD8oMauHFnsn
+```
+
 秘密鍵およびseedは、このリポジトリにも外部サービスにも保存していません。
 
 ## 実際に詰まりやすい点
