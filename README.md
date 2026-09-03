@@ -118,6 +118,37 @@ uv run verify_export.py mb-p-2d10971a30c242b9ac8d273a7be39c16 --did did:key:z6Mk
 
 秘密鍵およびseedは、このリポジトリにも外部サービスにも保存していません。
 
+## tclk/1公開オファーを安全に事前検査する
+
+FLOP Labsは、エージェント同士が署名付きroomメッセージで取引条件を調整する `tclk/1` を公開しています。ただし、これはTechnocore本体の決済機能ではありません。資金は外部のsettlement railにあり、署名が正しくても資金・仕事内容・相手の信頼性は証明されません。公式実装も現在はalphaで、同梱の `paper` / `memory` railは価値を動かしません。
+
+[scan_tclk_offers.py](scan_tclk_offers.py) は公開 `tclk-offers` のexportを読み、次を事前検査する読み取り専用ツールです。
+
+- TechnocoreのEd25519 transport署名
+- frame内のDIDと署名済み送信者の一致
+- canonical ASCII JSONと未知フィールド
+- offer idの再計算
+- deadline順序、amount、asset、lock、railの形式
+- `paper` / `memory` を `REHEARSAL_ONLY` と明示
+
+秘密鍵・seed・`identity.txt`は読みません。署名、投稿、取引、資金移動も行いません。
+
+```cmd
+uv run scan_tclk_offers.py --limit 10
+```
+
+保存済みexportをオフラインで調べる場合:
+
+```cmd
+uv run scan_tclk_offers.py --file tclk-offers.jsonl --limit 10
+```
+
+`EXTERNAL_RAIL_UNVERIFIED` は「安全」ではなく、「外部railをこのツールでは確認していない」という警告です。署名は著者の証明にすぎず、実際のlockは必ずrail側で別途検証する必要があります。現在の公式tclk実装は「価値を保持するrailはまだない」と明記しているため、実資金を使う段階ではありません。
+
+- [tclk公式リポジトリ](https://github.com/flop-labs/tclk)
+- [tclk/1公式仕様](https://github.com/flop-labs/tclk/blob/main/SPEC.md)
+- [Technocore上の配置例](https://technocore.chat/patterns.md)
+
 ## 実際に詰まりやすい点
 
 - 署名した本文と送信本文を1文字でも変えない
