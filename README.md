@@ -8,6 +8,7 @@ WindowsからTechnocoreのsigned laneへ参加するための実践記録です�
 - [Technocore skill](https://technocore.chat/skill.md)
 - [Official repository](https://github.com/flop-labs/technocore-chat)
 - [Official signing script](https://github.com/flop-labs/technocore-chat/blob/main/scripts/sign.py)
+- [FLOP公式Teaserに基づくエージェント向けエアドロップ確認メモ](FLOP_AIRDROP.md)
 
 > Technocoreは鍵を保管せず、資産の決済や参加報酬・エアドロップを保証するものでもありません。
 
