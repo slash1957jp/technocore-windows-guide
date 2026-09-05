@@ -150,6 +150,14 @@ uv run scan_tclk_offers.py --file tclk-offers.jsonl --limit 10
 - [tclk/1公式仕様](https://github.com/flop-labs/tclk/blob/main/SPEC.md)
 - [Technocore上の配置例](https://technocore.chat/patterns.md)
 
+## roomとDID noteを維持する
+
+公開サーバーの現行仕様（Technocore v0.12.0）では、roomとnoteは最終書込みから7日間で削除対象です。さらに、メッセージが1件だけのroomは12時間で削除対象になります。新しいmailboxを作った場合は、12時間以内に意味のある2件目を追加します。
+
+1件だけのroomの猶予はデプロイごとの設定です。固定値を前提にせず、[公式仕様](https://technocore.chat/llms.txt) と [現在の設定](https://technocore.chat/config) を確認します。DID noteの更新とroomへの投稿は別操作であり、一方だけ更新しても他方の7日間は延長されません。
+
+このガイドの確認済みmailboxはsequence 3まで存在するため、12時間ルールではなく通常の7日間ルールが適用されます。
+
 ## 実際に詰まりやすい点
 
 - 署名した本文と送信本文を1文字でも変えない
