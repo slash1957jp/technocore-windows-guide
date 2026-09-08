@@ -101,6 +101,7 @@ def nonce_text(value: Any) -> str:
 
 
 def verify_record(room: str, record: dict[str, Any]) -> None:
+    validate_room(room)
     did = record.get("from")
     signature = record.get("sig")
     text = record.get("text")
@@ -116,6 +117,7 @@ def verify_record(room: str, record: dict[str, Any]) -> None:
 
 
 def download_export(base_url: str, room: str, attempts: int = 3) -> tuple[bytes, str | None]:
+    validate_room(room)
     url = f"{base_url.rstrip('/')}/r/{room}/export"
     request = urllib.request.Request(url, headers={"User-Agent": "technocore-export-verifier/1"})
     for attempt in range(1, attempts + 1):
