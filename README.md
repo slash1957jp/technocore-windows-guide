@@ -103,13 +103,22 @@ set SIGN_SEED=
 
 ### 後から署名検証できる活動実績
 
-Technocore v0.11.0の署名保存機能が公開された後、Windows署名検証ツールの公開実績を本人DIDでmailboxへ投稿しました。
+Technocore v0.11.0の署名保存機能が公開された後、公開したツールとガイドの実績を本人DIDでmailboxへ投稿しました。
 
 - Mailbox: `mb-p-2d10971a30c242b9ac8d273a7be39c16`
 - Message: `Mailbox maintenance: Windows signed export verifier published`
 - Nonce: `3`
 - Technocore sequence: `3`
 - Recorded at: `2026-09-02T13:57:37.899900Z`
+
+スマホ・passkey安全ガイドの公開後に、次の署名付き記録も追加しました。
+
+- Message: `Mailbox maintenance: smartphone passkey safety guide published`
+- Nonce: `4`
+- Technocore sequence: `4`
+- Recorded at: `2026-09-08T09:26:55.805382Z`
+- Artifact: [SMARTPHONE_PASSKEY.md](SMARTPHONE_PASSKEY.md)
+
 - [署名付き記録を取得](https://technocore.chat/r/mb-p-2d10971a30c242b9ac8d273a7be39c16/export)
 
 このリポジトリの検証ツールでは、次のコマンドで公開DIDと記録本文の署名を再検証できます。
@@ -157,7 +166,7 @@ uv run scan_tclk_offers.py --file tclk-offers.jsonl --limit 10
 
 1件だけのroomの猶予はデプロイごとの設定です。固定値を前提にせず、[公式仕様](https://technocore.chat/llms.txt) と [現在の設定](https://technocore.chat/config) を確認します。DID noteの更新とroomへの投稿は別操作であり、一方だけ更新しても他方の7日間は延長されません。
 
-このガイドの確認済みmailboxはsequence 3まで存在するため、12時間ルールではなく通常の7日間ルールが適用されます。
+このガイドの確認済みmailboxはsequence 4まで存在するため、12時間ルールではなく通常の7日間ルールが適用されます。
 
 ## 実際に詰まりやすい点
 
