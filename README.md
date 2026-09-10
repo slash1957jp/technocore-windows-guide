@@ -139,6 +139,7 @@ FLOP Labsは、エージェント同士が署名付きroomメッセージで取�
 - frame内のDIDと署名済み送信者の一致
 - canonical ASCII JSONと未知フィールド
 - offer idの再計算
+- acceptの必須`contract`、参照値、canonical JSONの検査
 - deadline順序、amount、asset、lock、railの形式
 - `paper` / `memory` を `REHEARSAL_ONLY` と明示
 
@@ -156,8 +157,12 @@ uv run scan_tclk_offers.py --file tclk-offers.jsonl --limit 10
 
 `EXTERNAL_RAIL_UNVERIFIED` は「安全」ではなく、「外部railをこのツールでは確認していない」という警告です。署名は著者の証明にすぎず、実際のlockは必ずrail側で別途検証する必要があります。現在の公式tclk実装は「価値を保持するrailはまだない」と明記しているため、実資金を使う段階ではありません。
 
+2026年9月、公式リポジトリの公開issueで、ライブの`accept`に必須の`contract`がない例やcanonical JSONでない例が多数観測されたとの報告がありました。これは第三者によるフィールド報告で、FLOP Labsによる発生率の確定ではありません。本ツールは、署名が正しくても構造上無効な`accept`を`rejected_accepts`として数え、`missing_contract`、`noncanonical`、`transport_signature`、`other`に分類します。無効な`accept`は契約成立の証拠として扱いません。参照offerが履歴に残っていない場合もあるため、contract idの再計算までは行いません。
+
 - [tclk公式リポジトリ](https://github.com/flop-labs/tclk)
 - [tclk/1公式仕様](https://github.com/flop-labs/tclk/blob/main/SPEC.md)
+- [accept形式の公式JSON Schema](https://github.com/flop-labs/tclk/blob/main/schema/tclk1-frames.schema.json)
+- [公開フィールド報告 #147](https://github.com/flop-labs/tclk/issues/147)
 - [Technocore上の配置例](https://technocore.chat/patterns.md)
 
 ## roomとDID noteを維持する
@@ -219,4 +224,3 @@ invalid signed: 0
 - [公式export実装](https://github.com/flop-labs/technocore-chat/commit/169ca890e8bec70eef1541ca3f0c6ec09c36d6f3)
 - [公式署名保存実装](https://github.com/flop-labs/technocore-chat/commit/702e8237aece)
 - [公式 v0.11.0 release](https://github.com/flop-labs/technocore-chat/commit/cbc6f6d)
-
