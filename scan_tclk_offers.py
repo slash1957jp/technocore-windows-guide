@@ -30,12 +30,15 @@ OFFER_REQUIRED = {
     "claimByMs", "refundAfterMs", "expiresMs", "nonce", "id",
 }
 OFFER_ALLOWED = OFFER_REQUIRED | {"paymentKey", "job"}
+ACCEPT_REQUIRED = {"type", "from", "ref", "statement", "contract", "nonce"}
+ACCEPT_ALLOWED = ACCEPT_REQUIRED | {"paymentKey"}
 CANONICAL_RAILS = {
     "btc-htlc", "evm-htlc", "flop-htlc", "memory", "near-htlc", "paper", "x402"
 }
 DID_RE = re.compile(r"did:key:z6Mk[1-9A-HJ-NP-Za-km-z]{44}")
 HEX32_RE = re.compile(r"0x[0-9a-f]{64}")
 HEX33_RE = re.compile(r"0x[0-9a-f]{66}")
+STATEMENT_RE = re.compile(r"0x(?:[0-9a-f]{64}|[0-9a-f]{66})")
 FRAME_NONCE_RE = re.compile(r"[0-9a-f]{8,64}")
 AMOUNT_RE = re.compile(r"[1-9][0-9]*")
 ASSET_RE = re.compile(r"[A-Za-z0-9_-]{1,32}")
@@ -135,6 +138,58 @@ def validate_offer_record(record: dict[str, Any]) -> dict[str, Any]:
     return offer
 
 
+def validate_accept_record(record: dict[str, Any]) -> dict[str, Any]:
+    """Authenticate and structurally validate one tclk/1 accept record.
+
+    This deliberately checks the frame itself, not the referenced offer. A full
+    contract-id re-derivation requires that offer to remain in the retained ring.
+    """
+    verify_export.verify_record(OFFER_ROOM, record)
+    text = record.get("text")
+    if not isinstance(text, str) or not text.startswith(OFFER_PREFIX):
+        raise OfferError("record is not a tclk1 frame")
+    try:
+        accept = json.loads(text[len(OFFER_PREFIX):])
+    except json.JSONDecodeError as exc:
+        raise OfferError("tclk1 payload is not JSON") from exc
+    if not isinstance(accept, dict):
+        raise OfferError("tclk1 payload must be an object")
+    if accept.get("type") != "accept":
+        raise OfferError("frame is not an accept")
+    missing = ACCEPT_REQUIRED - accept.keys()
+    unknown = accept.keys() - ACCEPT_ALLOWED
+    if missing:
+        raise OfferError(f"missing fields: {', '.join(sorted(missing))}")
+    if unknown:
+        raise OfferError(f"unknown fields: {', '.join(sorted(unknown))}")
+    if accept.get("from") != record.get("from"):
+        raise OfferError("frame.from does not match the signed transport sender")
+    if not isinstance(accept["from"], str) or not DID_RE.fullmatch(accept["from"]):
+        raise OfferError("from is not an Ed25519 did:key")
+    if not isinstance(accept["ref"], str) or not HEX32_RE.fullmatch(accept["ref"]):
+        raise OfferError("ref has an invalid shape")
+    if not isinstance(accept["statement"], str) or not STATEMENT_RE.fullmatch(
+        accept["statement"]
+    ):
+        raise OfferError("statement has an invalid shape")
+    if not isinstance(accept["contract"], str) or not HEX32_RE.fullmatch(
+        accept["contract"]
+    ):
+        raise OfferError("contract has an invalid shape")
+    if "paymentKey" in accept and (
+        not isinstance(accept["paymentKey"], str)
+        or not HEX33_RE.fullmatch(accept["paymentKey"])
+    ):
+        raise OfferError("paymentKey has an invalid shape")
+    if not isinstance(accept["nonce"], str) or not FRAME_NONCE_RE.fullmatch(
+        accept["nonce"]
+    ):
+        raise OfferError("nonce has an invalid shape")
+    if text != OFFER_PREFIX + canonical_json(accept):
+        raise OfferError("frame is not canonical ASCII JSON")
+    return accept
+
+
 def rail_label(rails: list[str]) -> str:
     if set(rails) <= {"paper", "memory"}:
         return "REHEARSAL_ONLY (no value)"
@@ -174,6 +229,14 @@ def main() -> int:
     valid: list[tuple[dict[str, Any], dict[str, Any]]] = []
     invalid = 0
     other_frames = 0
+    valid_accepts = 0
+    rejected_accepts = 0
+    rejected_accept_reasons = {
+        "missing_contract": 0,
+        "noncanonical": 0,
+        "transport_signature": 0,
+        "other": 0,
+    }
     for record in records:
         record.pop("_line_number", None)
         text = record.get("text")
@@ -183,6 +246,24 @@ def main() -> int:
             frame_type = json.loads(text[len(OFFER_PREFIX):]).get("type")
         except (json.JSONDecodeError, AttributeError):
             invalid += 1
+            continue
+        if frame_type == "accept":
+            try:
+                validate_accept_record(record)
+            except verify_export.VerificationError:
+                rejected_accepts += 1
+                rejected_accept_reasons["transport_signature"] += 1
+            except (TypeError, ValueError) as exc:
+                rejected_accepts += 1
+                reason = str(exc)
+                if reason.startswith("missing fields:") and "contract" in reason:
+                    rejected_accept_reasons["missing_contract"] += 1
+                elif "canonical ASCII JSON" in reason:
+                    rejected_accept_reasons["noncanonical"] += 1
+                else:
+                    rejected_accept_reasons["other"] += 1
+            else:
+                valid_accepts += 1
             continue
         if frame_type != "offer":
             other_frames += 1
@@ -214,8 +295,21 @@ def main() -> int:
 
     print(
         f"summary records={len(records)} valid_offers={len(valid)} "
-        f"rejected_offer_frames={invalid} other_tclk_frames={other_frames} shown={shown}"
+        f"rejected_offer_frames={invalid} valid_accepts={valid_accepts} "
+        f"rejected_accepts={rejected_accepts} other_tclk_frames={other_frames} "
+        f"shown={shown}"
     )
+    if rejected_accepts:
+        print(
+            "accept_rejections "
+            + " ".join(
+                f"{name}={count}" for name, count in rejected_accept_reasons.items()
+            )
+        )
+        print(
+            "WARNING: rejected accepts cannot be treated as valid contract openings; "
+            "common causes include a missing contract field or non-canonical JSON."
+        )
     print("NOTE: a valid signature proves authorship only; it does not verify funds or work.")
     # Rejected frames are expected on a world-writable room and are data, not a
     # scanner failure. Operational failures above still return 2.
