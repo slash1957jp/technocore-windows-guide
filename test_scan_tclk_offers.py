@@ -1,4 +1,5 @@
 import base64
+import json
 from datetime import datetime, timezone
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -52,6 +53,38 @@ def signed_offer(*, frame_from_mismatch: bool = False, bad_id: bool = False):
     }
 
 
+def signed_accept(*, missing_contract: bool = False, noncanonical: bool = False):
+    private = Ed25519PrivateKey.generate()
+    public = private.public_key().public_bytes_raw()
+    did = "did:key:z" + base58btc_encode(verify_export.MULTICODEC_ED25519 + public)
+    accept = {
+        "contract": "0x" + "11" * 32,
+        "from": did,
+        "nonce": "0123456789abcdef",
+        "ref": "0x" + "22" * 32,
+        "statement": "0x" + "33" * 32,
+        "type": "accept",
+    }
+    if missing_contract:
+        accept.pop("contract")
+    payload = (
+        json.dumps(dict(reversed(list(accept.items()))), separators=(",", ":"))
+        if noncanonical
+        else scan_tclk_offers.canonical_json(accept)
+    )
+    text = scan_tclk_offers.OFFER_PREFIX + payload
+    nonce = 8
+    sig = private.sign(f"tclk-offers|{nonce}|{text}".encode())
+    return {
+        "seq": 2,
+        "ts": "2026-09-10T00:00:00Z",
+        "from": did,
+        "nonce": nonce,
+        "sig": base64.urlsafe_b64encode(sig).decode().rstrip("="),
+        "text": text,
+    }
+
+
 def test_valid_signed_offer_is_accepted():
     offer = scan_tclk_offers.validate_offer_record(signed_offer())
     assert offer["rails"] == ["paper"]
@@ -82,3 +115,26 @@ def test_changed_record_text_breaks_transport_signature():
     except verify_export.VerificationError:
         return
     raise AssertionError("changed signed text must be rejected")
+
+
+def test_valid_signed_accept_is_accepted():
+    accept = scan_tclk_offers.validate_accept_record(signed_accept())
+    assert accept["contract"] == "0x" + "11" * 32
+
+
+def test_accept_without_contract_is_rejected():
+    try:
+        scan_tclk_offers.validate_accept_record(signed_accept(missing_contract=True))
+    except scan_tclk_offers.OfferError as exc:
+        assert "contract" in str(exc)
+        return
+    raise AssertionError("an accept without contract must be rejected")
+
+
+def test_noncanonical_accept_is_rejected():
+    try:
+        scan_tclk_offers.validate_accept_record(signed_accept(noncanonical=True))
+    except scan_tclk_offers.OfferError as exc:
+        assert "canonical" in str(exc)
+        return
+    raise AssertionError("an accept with insertion-order JSON must be rejected")
