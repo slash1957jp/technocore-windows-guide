@@ -17,13 +17,21 @@ def base58btc_encode(raw: bytes) -> str:
     return "1" * (len(raw) - len(raw.lstrip(b"\x00"))) + encoded
 
 
-def signed_offer(*, frame_from_mismatch: bool = False, bad_id: bool = False):
+def signed_offer(
+    *,
+    frame_from_mismatch: bool = False,
+    bad_id: bool = False,
+    amount: str = "1",
+    missing: set[str] | None = None,
+    unknown_field: bool = False,
+    noncanonical: bool = False,
+):
     private = Ed25519PrivateKey.generate()
     public = private.public_key().public_bytes_raw()
     did = "did:key:z" + base58btc_encode(verify_export.MULTICODEC_ED25519 + public)
     now = int(datetime.now(timezone.utc).timestamp() * 1000)
     offer = {
-        "amount": "1",
+        "amount": amount,
         "asset": "PAPER",
         "claimByMs": now + 120_000,
         "expiresMs": now + 60_000,
@@ -36,11 +44,20 @@ def signed_offer(*, frame_from_mismatch: bool = False, bad_id: bool = False):
         "type": "offer",
     }
     offer["id"] = scan_tclk_offers.expected_offer_id(offer)
+    for key in missing or set():
+        offer.pop(key, None)
+    if unknown_field:
+        offer["description"] = "not part of tclk/1"
     if bad_id:
         offer["id"] = "0x" + "00" * 32
     if frame_from_mismatch:
         offer["from"] = "did:key:z6Mk" + "1" * 44
-    text = scan_tclk_offers.OFFER_PREFIX + scan_tclk_offers.canonical_json(offer)
+    payload = (
+        json.dumps(dict(reversed(list(offer.items()))), separators=(",", ":"))
+        if noncanonical
+        else scan_tclk_offers.canonical_json(offer)
+    )
+    text = scan_tclk_offers.OFFER_PREFIX + payload
     nonce = 7
     sig = private.sign(f"tclk-offers|{nonce}|{text}".encode())
     return {
@@ -138,3 +155,40 @@ def test_noncanonical_accept_is_rejected():
         assert "canonical" in str(exc)
         return
     raise AssertionError("an accept with insertion-order JSON must be rejected")
+
+
+def test_incomplete_offer_shape_is_classified():
+    record = signed_offer(missing={"from", "id", "role", "lock"})
+    try:
+        scan_tclk_offers.validate_offer_record(record)
+    except scan_tclk_offers.OfferError as exc:
+        assert scan_tclk_offers.classify_offer_rejection(exc) == "incomplete_shape"
+        return
+    raise AssertionError("an incomplete offer-shaped payload must be rejected")
+
+
+def test_unknown_offer_fields_are_classified():
+    try:
+        scan_tclk_offers.validate_offer_record(signed_offer(unknown_field=True))
+    except scan_tclk_offers.OfferError as exc:
+        assert scan_tclk_offers.classify_offer_rejection(exc) == "unknown_fields"
+        return
+    raise AssertionError("unknown offer fields must be rejected")
+
+
+def test_decimal_amount_is_classified():
+    try:
+        scan_tclk_offers.validate_offer_record(signed_offer(amount="20.0"))
+    except scan_tclk_offers.OfferError as exc:
+        assert scan_tclk_offers.classify_offer_rejection(exc) == "bad_amount"
+        return
+    raise AssertionError("a decimal-form amount must be rejected")
+
+
+def test_noncanonical_offer_is_classified():
+    try:
+        scan_tclk_offers.validate_offer_record(signed_offer(noncanonical=True))
+    except scan_tclk_offers.OfferError as exc:
+        assert scan_tclk_offers.classify_offer_rejection(exc) == "noncanonical"
+        return
+    raise AssertionError("a non-canonical offer must be rejected")
