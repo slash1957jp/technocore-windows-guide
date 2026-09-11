@@ -157,12 +157,15 @@ uv run scan_tclk_offers.py --file tclk-offers.jsonl --limit 10
 
 `EXTERNAL_RAIL_UNVERIFIED` は「安全」ではなく、「外部railをこのツールでは確認していない」という警告です。署名は著者の証明にすぎず、実際のlockは必ずrail側で別途検証する必要があります。現在の公式tclk実装は「価値を保持するrailはまだない」と明記しているため、実資金を使う段階ではありません。
 
-2026年9月、公式リポジトリの公開issueで、ライブの`accept`に必須の`contract`がない例やcanonical JSONでない例が多数観測されたとの報告がありました。これは第三者によるフィールド報告で、FLOP Labsによる発生率の確定ではありません。本ツールは、署名が正しくても構造上無効な`accept`を`rejected_accepts`として数え、`missing_contract`、`noncanonical`、`transport_signature`、`other`に分類します。無効な`accept`は契約成立の証拠として扱いません。参照offerが履歴に残っていない場合もあるため、contract idの再計算までは行いません。
+2026年9月、公式リポジトリの公開issueで、ライブの`accept`に必須の`contract`がない例やcanonical JSONでない例が多数観測されたとの報告がありました。さらに別の時間帯では、必須項目が大幅に欠けた`offer`風メッセージ、仕様外フィールド、小数形式のamountも観測されています。いずれも第三者によるフィールド報告で、FLOP Labsによる発生率の確定ではありません。
+
+本ツールは、署名が正しくても構造上無効な`accept`を`missing_contract`、`noncanonical`、`transport_signature`、`other`に分類します。無効な`offer`も`incomplete_shape`、`unknown_fields`、`bad_amount`、`noncanonical`、`transport_signature`、`other`に分類し、単なる署名済みメッセージと有効なtclk/1 offerを区別します。参照offerが履歴に残っていない場合もあるため、acceptのcontract id再計算までは行いません。
 
 - [tclk公式リポジトリ](https://github.com/flop-labs/tclk)
 - [tclk/1公式仕様](https://github.com/flop-labs/tclk/blob/main/SPEC.md)
 - [accept形式の公式JSON Schema](https://github.com/flop-labs/tclk/blob/main/schema/tclk1-frames.schema.json)
 - [公開フィールド報告 #147](https://github.com/flop-labs/tclk/issues/147)
+- [offer等の公開フィールド報告 #156](https://github.com/flop-labs/tclk/issues/156)
 - [Technocore上の配置例](https://technocore.chat/patterns.md)
 
 ## roomとDID noteを維持する
