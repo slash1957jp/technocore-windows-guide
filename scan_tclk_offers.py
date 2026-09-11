@@ -190,6 +190,20 @@ def validate_accept_record(record: dict[str, Any]) -> dict[str, Any]:
     return accept
 
 
+def classify_offer_rejection(exc: Exception) -> str:
+    """Return a stable, low-cardinality reason for an invalid offer frame."""
+    reason = str(exc)
+    if reason.startswith("missing fields:"):
+        return "incomplete_shape"
+    if reason.startswith("unknown fields:"):
+        return "unknown_fields"
+    if "amount must be a positive decimal integer string" in reason:
+        return "bad_amount"
+    if "canonical ASCII JSON" in reason:
+        return "noncanonical"
+    return "other"
+
+
 def rail_label(rails: list[str]) -> str:
     if set(rails) <= {"paper", "memory"}:
         return "REHEARSAL_ONLY (no value)"
@@ -227,8 +241,17 @@ def main() -> int:
 
     now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
     valid: list[tuple[dict[str, Any], dict[str, Any]]] = []
-    invalid = 0
+    rejected_offers = 0
+    unparseable_frames = 0
     other_frames = 0
+    rejected_offer_reasons = {
+        "incomplete_shape": 0,
+        "unknown_fields": 0,
+        "bad_amount": 0,
+        "noncanonical": 0,
+        "transport_signature": 0,
+        "other": 0,
+    }
     valid_accepts = 0
     rejected_accepts = 0
     rejected_accept_reasons = {
@@ -245,7 +268,7 @@ def main() -> int:
         try:
             frame_type = json.loads(text[len(OFFER_PREFIX):]).get("type")
         except (json.JSONDecodeError, AttributeError):
-            invalid += 1
+            unparseable_frames += 1
             continue
         if frame_type == "accept":
             try:
@@ -270,8 +293,13 @@ def main() -> int:
             continue
         try:
             offer = validate_offer_record(record)
-        except (TypeError, ValueError, verify_export.VerificationError):
-            invalid += 1
+        except verify_export.VerificationError:
+            rejected_offers += 1
+            rejected_offer_reasons["transport_signature"] += 1
+            continue
+        except (TypeError, ValueError) as exc:
+            rejected_offers += 1
+            rejected_offer_reasons[classify_offer_rejection(exc)] += 1
             continue
         valid.append((record, offer))
 
@@ -295,10 +323,22 @@ def main() -> int:
 
     print(
         f"summary records={len(records)} valid_offers={len(valid)} "
-        f"rejected_offer_frames={invalid} valid_accepts={valid_accepts} "
+        f"rejected_offer_frames={rejected_offers} valid_accepts={valid_accepts} "
         f"rejected_accepts={rejected_accepts} other_tclk_frames={other_frames} "
+        f"unparseable_tclk_frames={unparseable_frames} "
         f"shown={shown}"
     )
+    if rejected_offers:
+        print(
+            "offer_rejections "
+            + " ".join(
+                f"{name}={count}" for name, count in rejected_offer_reasons.items()
+            )
+        )
+        print(
+            "WARNING: an offer-shaped message can be signed yet still be incomplete, "
+            "non-canonical, or unrelated to the tclk/1 offer schema."
+        )
     if rejected_accepts:
         print(
             "accept_rejections "
