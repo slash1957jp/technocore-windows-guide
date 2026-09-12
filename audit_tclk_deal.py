@@ -120,9 +120,9 @@ def party_roles(offer: dict[str, Any], accept: dict[str, Any]) -> tuple[str, str
 
 
 def audit_deal_record(
-    record: dict[str, Any], room: str, contract: str, parties: set[str]
+    record: dict[str, Any], room: str, contract: str, payer: str, payee: str
 ) -> dict[str, Any]:
-    """Authenticate one deal-room record and require a contract party as sender."""
+    """Authenticate one deal-room record and enforce basic party roles."""
     try:
         verify_export.verify_record(room, record)
     except verify_export.VerificationError as exc:
@@ -150,10 +150,14 @@ def audit_deal_record(
         raise DealAuditError("frame is not canonical ASCII JSON")
     if frame.get("from") != record.get("from"):
         raise DealAuditError("frame.from does not match the signed transport sender")
-    if frame["from"] not in parties:
+    if frame["from"] not in {payer, payee}:
         raise DealAuditError("signed sender is not a contract party")
     if frame.get("contract") != contract:
         raise DealAuditError("frame names a different contract")
+    if frame_type in {"lock", "refund"} and frame["from"] != payer:
+        raise DealAuditError(f"only the payer may send {frame_type}")
+    if frame_type == "reveal" and frame["from"] != payee:
+        raise DealAuditError("only the payee may send reveal")
     return frame
 
 
@@ -190,7 +194,7 @@ def main() -> int:
         record = dict(original)
         record.pop("_line_number", None)
         try:
-            frame = audit_deal_record(record, room, args.contract, {payer, payee})
+            frame = audit_deal_record(record, room, args.contract, payer, payee)
         except DealAuditError as exc:
             rejected += 1
             print(f"REJECT seq={record.get('seq')} reason={exc}")
