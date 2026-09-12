@@ -71,7 +71,7 @@ def test_party_signed_frame_is_accepted():
     private, did = identity()
     room = audit_tclk_deal.derive_deal_room(CONTRACT)
     record = signed_record(private, did, room, lock_frame(did))
-    frame = audit_tclk_deal.audit_deal_record(record, room, CONTRACT, {did})
+    frame = audit_tclk_deal.audit_deal_record(record, room, CONTRACT, did, "payee")
     assert frame["type"] == "lock"
 
 
@@ -82,7 +82,7 @@ def test_foreign_signed_frame_is_rejected():
     room = audit_tclk_deal.derive_deal_room(CONTRACT)
     record = signed_record(foreign_private, foreign_did, room, lock_frame(foreign_did))
     try:
-        audit_tclk_deal.audit_deal_record(record, room, CONTRACT, {party_did})
+        audit_tclk_deal.audit_deal_record(record, room, CONTRACT, party_did, "payee")
     except audit_tclk_deal.DealAuditError as exc:
         assert "not a contract party" in str(exc)
         return
@@ -95,7 +95,7 @@ def test_frame_sender_must_match_transport_sender():
     room = audit_tclk_deal.derive_deal_room(CONTRACT)
     record = signed_record(private, did, room, lock_frame(other_did))
     try:
-        audit_tclk_deal.audit_deal_record(record, room, CONTRACT, {did, other_did})
+        audit_tclk_deal.audit_deal_record(record, room, CONTRACT, did, other_did)
     except audit_tclk_deal.DealAuditError as exc:
         assert "transport sender" in str(exc)
         return
@@ -107,7 +107,7 @@ def test_wrong_contract_is_rejected():
     room = audit_tclk_deal.derive_deal_room(CONTRACT)
     record = signed_record(private, did, room, lock_frame(did, "0x" + "22" * 32))
     try:
-        audit_tclk_deal.audit_deal_record(record, room, CONTRACT, {did})
+        audit_tclk_deal.audit_deal_record(record, room, CONTRACT, did, "payee")
     except audit_tclk_deal.DealAuditError as exc:
         assert "different contract" in str(exc)
         return
@@ -119,7 +119,7 @@ def test_noncanonical_frame_is_rejected():
     room = audit_tclk_deal.derive_deal_room(CONTRACT)
     record = signed_record(private, did, room, lock_frame(did), noncanonical=True)
     try:
-        audit_tclk_deal.audit_deal_record(record, room, CONTRACT, {did})
+        audit_tclk_deal.audit_deal_record(record, room, CONTRACT, did, "payee")
     except audit_tclk_deal.DealAuditError as exc:
         assert "canonical" in str(exc)
         return
@@ -133,3 +133,16 @@ def test_party_roles_follow_offer_role():
     assert audit_tclk_deal.party_roles(
         {"from": "offerer", "role": "payee"}, {"from": "acceptor"}
     ) == ("acceptor", "offerer")
+
+
+def test_only_payer_may_send_lock():
+    private, payee = identity()
+    _, payer = identity()
+    room = audit_tclk_deal.derive_deal_room(CONTRACT)
+    record = signed_record(private, payee, room, lock_frame(payee))
+    try:
+        audit_tclk_deal.audit_deal_record(record, room, CONTRACT, payer, payee)
+    except audit_tclk_deal.DealAuditError as exc:
+        assert "only the payer" in str(exc)
+        return
+    raise AssertionError("a payee lock must be rejected")
