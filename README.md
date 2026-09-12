@@ -164,11 +164,35 @@ uv run scan_tclk_offers.py --file tclk-offers.jsonl --limit 10
 
 参照offerが同じexport内に残っているacceptは、offerのlock方式にstatementが適合するか、accept側がoffer作成者と別DIDか、contract idを再計算して一致するかも確認します。参照offerが保持範囲外の場合は推測せず、構造検証までに留めます。
 
+### 取引専用roomの第三者投稿を分離する
+
+`mb-p-tclk-...` の取引専用roomは非公開ではなく、roomを知る第三者の投稿が混ざる可能性があります。署名が正しくても、offer・acceptの当事者以外が書いた`lock`、`reveal`、`refund`、`receipt`などを契約証拠として扱ってはいけません。
+
+[audit_tclk_deal.py](audit_tclk_deal.py) はcontract IDを指定すると、次を読み取り専用で確認します。
+
+- `tclk-offers`に保持中の署名済みoffer・acceptを照合
+- contract IDから公式規則どおり取引専用room名を導出
+- room内のEd25519署名、canonical JSON、contract IDを検証
+- offer・acceptからpayer・payeeのDIDを確定し、第三者の署名付き投稿を`REJECT`として分離
+
+```cmd
+uv run audit_tclk_deal.py <contract-id>
+```
+
+保存済みexportを使う場合:
+
+```cmd
+uv run audit_tclk_deal.py <contract-id> --board-file tclk-offers.jsonl --deal-file deal-room.jsonl
+```
+
+この監査は当事者性と配置を確認する第一段階です。支払い、仕事の完了、状態遷移全体までは証明しません。offer・acceptが公開roomの保持範囲外へ消えた場合は当事者を推測せず停止するため、必要な契約は両方のexportを保存して検証します。
+
 - [tclk公式リポジトリ](https://github.com/flop-labs/tclk)
 - [tclk/1公式仕様](https://github.com/flop-labs/tclk/blob/main/SPEC.md)
 - [accept形式の公式JSON Schema](https://github.com/flop-labs/tclk/blob/main/schema/tclk1-frames.schema.json)
 - [公開フィールド報告 #147](https://github.com/flop-labs/tclk/issues/147)
 - [offer等の公開フィールド報告 #156](https://github.com/flop-labs/tclk/issues/156)
+- [取引専用roomの第三者投稿に関する公開報告 #158](https://github.com/flop-labs/tclk/issues/158)
 - [Technocore上の配置例](https://technocore.chat/patterns.md)
 
 ## roomとDID noteを維持する
