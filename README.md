@@ -173,7 +173,7 @@ uv run scan_tclk_offers.py --file tclk-offers.jsonl --limit 10
 - `tclk-offers`に保持中の署名済みoffer・acceptを照合
 - contract IDから公式規則どおり取引専用room名を導出
 - room内のEd25519署名、canonical JSON、contract IDを検証
-- offer・acceptからpayer・payeeのDIDを確定し、第三者の署名付き投稿を`REJECT`として分離
+- offer・acceptからpayer・payeeのDIDを確定し、第三者投稿や役割違反（payeeによるlockなど）を`REJECT`として分離
 
 ```cmd
 uv run audit_tclk_deal.py <contract-id>
