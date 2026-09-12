@@ -192,3 +192,39 @@ def test_noncanonical_offer_is_classified():
         assert scan_tclk_offers.classify_offer_rejection(exc) == "noncanonical"
         return
     raise AssertionError("a non-canonical offer must be rejected")
+
+
+def linked_offer_and_accept():
+    offer = scan_tclk_offers.validate_offer_record(signed_offer())
+    accept = scan_tclk_offers.validate_accept_record(signed_accept())
+    accept["ref"] = offer["id"]
+    accept["contract"] = scan_tclk_offers.expected_contract_id(offer, accept)
+    return offer, accept
+
+
+def test_accept_is_cross_checked_against_retained_offer():
+    offer, accept = linked_offer_and_accept()
+    scan_tclk_offers.validate_accept_against_offer(accept, offer)
+
+
+def test_accept_statement_must_fit_offer_lock():
+    offer, accept = linked_offer_and_accept()
+    accept["statement"] = "0x" + "02" + "11" * 32
+    accept["contract"] = scan_tclk_offers.expected_contract_id(offer, accept)
+    try:
+        scan_tclk_offers.validate_accept_against_offer(accept, offer)
+    except scan_tclk_offers.OfferError as exc:
+        assert "statement" in str(exc)
+        return
+    raise AssertionError("a point statement must not satisfy a hash-lock offer")
+
+
+def test_accept_contract_is_recomputed_from_offer():
+    offer, accept = linked_offer_and_accept()
+    accept["contract"] = "0x" + "00" * 32
+    try:
+        scan_tclk_offers.validate_accept_against_offer(accept, offer)
+    except scan_tclk_offers.OfferError as exc:
+        assert "contract id" in str(exc)
+        return
+    raise AssertionError("a mismatched contract id must be rejected")
