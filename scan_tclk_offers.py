@@ -20,6 +20,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from cryptography.hazmat.primitives.asymmetric import ec
+
 import verify_export
 
 
@@ -57,6 +59,28 @@ def expected_offer_id(offer: dict[str, Any]) -> str:
     core.pop("id", None)
     payload = "FLOP::tclk::v1|offer|" + canonical_json(core)
     return "0x" + hashlib.sha256(payload.encode("ascii")).hexdigest()
+
+
+def expected_contract_id(offer: dict[str, Any], accept: dict[str, Any]) -> str:
+    core = {
+        key: accept[key]
+        for key in ("from", "ref", "statement", "paymentKey", "nonce")
+        if key in accept
+    }
+    payload = "FLOP::tclk::v1|contract|" + canonical_json(
+        {"offer": offer, "accept": core}
+    )
+    return "0x" + hashlib.sha256(payload.encode("ascii")).hexdigest()
+
+
+def _valid_secp256k1_point(value: str) -> bool:
+    try:
+        ec.EllipticCurvePublicKey.from_encoded_point(
+            ec.SECP256K1(), bytes.fromhex(value[2:])
+        )
+    except (ValueError, TypeError):
+        return False
+    return True
 
 
 def _positive_int(value: Any, name: str) -> int:
@@ -107,11 +131,13 @@ def validate_offer_record(record: dict[str, Any]) -> dict[str, Any]:
     if offer["lock"] == "point" and (
         not isinstance(offer.get("paymentKey"), str)
         or not HEX33_RE.fullmatch(offer["paymentKey"])
+        or not _valid_secp256k1_point(offer["paymentKey"])
     ):
         raise OfferError("point locks require a compressed secp256k1 paymentKey")
     if "paymentKey" in offer and (
         not isinstance(offer["paymentKey"], str)
         or not HEX33_RE.fullmatch(offer["paymentKey"])
+        or not _valid_secp256k1_point(offer["paymentKey"])
     ):
         raise OfferError("paymentKey has an invalid shape")
     if not isinstance(offer["nonce"], str) or not FRAME_NONCE_RE.fullmatch(offer["nonce"]):
@@ -179,6 +205,7 @@ def validate_accept_record(record: dict[str, Any]) -> dict[str, Any]:
     if "paymentKey" in accept and (
         not isinstance(accept["paymentKey"], str)
         or not HEX33_RE.fullmatch(accept["paymentKey"])
+        or not _valid_secp256k1_point(accept["paymentKey"])
     ):
         raise OfferError("paymentKey has an invalid shape")
     if not isinstance(accept["nonce"], str) or not FRAME_NONCE_RE.fullmatch(
@@ -188,6 +215,30 @@ def validate_accept_record(record: dict[str, Any]) -> dict[str, Any]:
     if text != OFFER_PREFIX + canonical_json(accept):
         raise OfferError("frame is not canonical ASCII JSON")
     return accept
+
+
+def validate_accept_against_offer(
+    accept: dict[str, Any], offer: dict[str, Any]
+) -> None:
+    """Cross-check an accept when its referenced offer is still retained."""
+    if accept["ref"] != offer["id"]:
+        raise OfferError("accept ref does not match the supplied offer")
+    if accept["from"] == offer["from"]:
+        raise OfferError("accept.from must differ from offer.from")
+    if offer["lock"] == "hash":
+        if not HEX32_RE.fullmatch(accept["statement"]):
+            raise OfferError("statement does not fit the offer's hash lock")
+    elif offer["lock"] == "point":
+        if not HEX33_RE.fullmatch(accept["statement"]) or not _valid_secp256k1_point(
+            accept["statement"]
+        ):
+            raise OfferError("statement does not fit the offer's point lock")
+        if "paymentKey" not in accept:
+            raise OfferError("point locks require the acceptor's paymentKey")
+    else:
+        raise OfferError("offer has an unknown lock kind")
+    if accept["contract"] != expected_contract_id(offer, accept):
+        raise OfferError("contract id does not match the offer and accept core")
 
 
 def classify_offer_rejection(exc: Exception) -> str:
@@ -253,6 +304,7 @@ def main() -> int:
         "other": 0,
     }
     valid_accepts = 0
+    parsed_accepts: list[dict[str, Any]] = []
     rejected_accepts = 0
     rejected_accept_reasons = {
         "missing_contract": 0,
@@ -272,7 +324,7 @@ def main() -> int:
             continue
         if frame_type == "accept":
             try:
-                validate_accept_record(record)
+                accept = validate_accept_record(record)
             except verify_export.VerificationError:
                 rejected_accepts += 1
                 rejected_accept_reasons["transport_signature"] += 1
@@ -287,6 +339,7 @@ def main() -> int:
                     rejected_accept_reasons["other"] += 1
             else:
                 valid_accepts += 1
+                parsed_accepts.append(accept)
             continue
         if frame_type != "offer":
             other_frames += 1
@@ -302,6 +355,32 @@ def main() -> int:
             rejected_offer_reasons[classify_offer_rejection(exc)] += 1
             continue
         valid.append((record, offer))
+
+    offers_by_id = {offer["id"]: offer for _, offer in valid}
+    linked_accepts = 0
+    linked_accept_failures = {
+        "statement_mismatch": 0,
+        "contract_mismatch": 0,
+        "same_sender": 0,
+        "other": 0,
+    }
+    for accept in parsed_accepts:
+        offer = offers_by_id.get(accept["ref"])
+        if offer is None:
+            continue
+        linked_accepts += 1
+        try:
+            validate_accept_against_offer(accept, offer)
+        except OfferError as exc:
+            reason = str(exc)
+            if "statement does not fit" in reason:
+                linked_accept_failures["statement_mismatch"] += 1
+            elif "contract id does not match" in reason:
+                linked_accept_failures["contract_mismatch"] += 1
+            elif "must differ" in reason:
+                linked_accept_failures["same_sender"] += 1
+            else:
+                linked_accept_failures["other"] += 1
 
     shown = 0
     for record, offer in reversed(valid):
@@ -326,6 +405,7 @@ def main() -> int:
         f"rejected_offer_frames={rejected_offers} valid_accepts={valid_accepts} "
         f"rejected_accepts={rejected_accepts} other_tclk_frames={other_frames} "
         f"unparseable_tclk_frames={unparseable_frames} "
+        f"linked_accepts={linked_accepts} "
         f"shown={shown}"
     )
     if rejected_offers:
@@ -350,6 +430,19 @@ def main() -> int:
             "WARNING: rejected accepts cannot be treated as valid contract openings; "
             "common causes include a missing contract field or non-canonical JSON."
         )
+    linked_failures = sum(linked_accept_failures.values())
+    if linked_accepts:
+        print(
+            "linked_accept_failures "
+            + " ".join(
+                f"{name}={count}" for name, count in linked_accept_failures.items()
+            )
+        )
+        if linked_failures:
+            print(
+                "WARNING: these structurally valid accepts fail checks against their "
+                "retained referenced offers."
+            )
     print("NOTE: a valid signature proves authorship only; it does not verify funds or work.")
     # Rejected frames are expected on a world-writable room and are data, not a
     # scanner failure. Operational failures above still return 2.
