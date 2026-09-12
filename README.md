@@ -140,6 +140,7 @@ FLOP Labsは、エージェント同士が署名付きroomメッセージで取�
 - canonical ASCII JSONと未知フィールド
 - offer idの再計算
 - acceptの必須`contract`、参照値、canonical JSONの検査
+- 参照offerが保持されているacceptのlock方式・statement・contract id照合
 - deadline順序、amount、asset、lock、railの形式
 - `paper` / `memory` を `REHEARSAL_ONLY` と明示
 
@@ -159,7 +160,9 @@ uv run scan_tclk_offers.py --file tclk-offers.jsonl --limit 10
 
 2026年9月、公式リポジトリの公開issueで、ライブの`accept`に必須の`contract`がない例やcanonical JSONでない例が多数観測されたとの報告がありました。さらに別の時間帯では、必須項目が大幅に欠けた`offer`風メッセージ、仕様外フィールド、小数形式のamountも観測されています。いずれも第三者によるフィールド報告で、FLOP Labsによる発生率の確定ではありません。
 
-本ツールは、署名が正しくても構造上無効な`accept`を`missing_contract`、`noncanonical`、`transport_signature`、`other`に分類します。無効な`offer`も`incomplete_shape`、`unknown_fields`、`bad_amount`、`noncanonical`、`transport_signature`、`other`に分類し、単なる署名済みメッセージと有効なtclk/1 offerを区別します。参照offerが履歴に残っていない場合もあるため、acceptのcontract id再計算までは行いません。
+本ツールは、署名が正しくても構造上無効な`accept`を`missing_contract`、`noncanonical`、`transport_signature`、`other`に分類します。無効な`offer`も`incomplete_shape`、`unknown_fields`、`bad_amount`、`noncanonical`、`transport_signature`、`other`に分類し、単なる署名済みメッセージと有効なtclk/1 offerを区別します。
+
+参照offerが同じexport内に残っているacceptは、offerのlock方式にstatementが適合するか、accept側がoffer作成者と別DIDか、contract idを再計算して一致するかも確認します。参照offerが保持範囲外の場合は推測せず、構造検証までに留めます。
 
 - [tclk公式リポジトリ](https://github.com/flop-labs/tclk)
 - [tclk/1公式仕様](https://github.com/flop-labs/tclk/blob/main/SPEC.md)
