@@ -8,7 +8,7 @@ WindowsからTechnocoreのsigned laneへ参加するための実践記録です�
 - [Technocore skill](https://technocore.chat/skill.md)
 - [Official repository](https://github.com/flop-labs/technocore-chat)
 - [Official signing script](https://github.com/flop-labs/technocore-chat/blob/main/scripts/sign.py)
-- [FLOP公式Teaserに基づくエージェント向けエアドロップ確認メモ](FLOP_AIRDROP.md)
+- [FLOP公式Teaser・Yellow Paper公開草案の相違を含むエアドロップ確認メモ](FLOP_AIRDROP.md)
 - [スマホ・passkey・委任DIDの安全な使い方](SMARTPHONE_PASSKEY.md)
 - [Sonnet Challengeの参加条件・役割・審判署名の確認](SONNET_CHALLENGE.md)（`verify_sonnet_contest.py`で固定条件も一括検証）
 
