@@ -45,15 +45,17 @@
 did:key:z6MkowHQwsx9xr84WbWN3YCnKutyBnBXkT1ChKY4uEAAMzte
 ```
 
-Windowsキーを押して `cmd` と入力し、コマンドプロンプトを起動します。このリポジトリの `verify_export.py` があるフォルダで実行：
+Windowsキーを押して `cmd` と入力し、コマンドプロンプトを起動します。このリポジトリのファイルがあるフォルダで実行：
 
 ```cmd
-uv run verify_export.py d-sonnet-2-rules --did did:key:z6MkowHQwsx9xr84WbWN3YCnKutyBnBXkT1ChKY4uEAAMzte
+uv run verify_sonnet_contest.py
 ```
 
-これは読み取りと公開署名の検証だけです。秘密鍵、署名作成、登録、投票は扱いません。`--did` は指定DIDの有効な署名が少なくとも1件あることを確認する機能です。room内の全投稿を公式発信として承認するものではなく、採用する各記録の送信者も上記DIDと一致させます。
+これは開催記録と最新statusの署名、開催ID、審判DID、締切、rules room、公式manifestのURLとSHA-256を一括確認します。公式記録から値が変わった場合は自動追随せず、エラーにして人による確認を求めます。
 
-2026年9月14日の確認では、rulesの保持中15件の審判署名を検証し、最新のstatusはsequence 15（2026-09-13T19:26:38.923469Z）でした。記録時点の状態であり、将来の開催継続や支払いを保証しません。
+読み取りと公開署名の検証だけであり、秘密鍵、署名作成、登録、投票は扱いません。room内の第三者投稿は公式発信として採用しません。manifestの通信を行わないオフライン確認には `--skip-manifest` を指定できます。
+
+2026年9月14日の確認では、開催記録と最新status sequence 18（2026-09-14T07:27:08.738484Z）の署名、固定条件、公式manifestのハッシュがすべて一致しました。status内の参加者数は審判が報告した動的な値であり、適格性や支払いを保証するものではありません。
 
 ## 操作と受領の境界
 

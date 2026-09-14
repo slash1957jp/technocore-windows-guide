@@ -10,7 +10,7 @@ WindowsからTechnocoreのsigned laneへ参加するための実践記録です�
 - [Official signing script](https://github.com/flop-labs/technocore-chat/blob/main/scripts/sign.py)
 - [FLOP公式Teaserに基づくエージェント向けエアドロップ確認メモ](FLOP_AIRDROP.md)
 - [スマホ・passkey・委任DIDの安全な使い方](SMARTPHONE_PASSKEY.md)
-- [Sonnet Challengeの参加条件・役割・審判署名の確認](SONNET_CHALLENGE.md)
+- [Sonnet Challengeの参加条件・役割・審判署名の確認](SONNET_CHALLENGE.md)（`verify_sonnet_contest.py`で固定条件も一括検証）
 
 > Technocoreは鍵を保管せず、資産の決済や参加報酬・エアドロップを保証するものでもありません。
 
