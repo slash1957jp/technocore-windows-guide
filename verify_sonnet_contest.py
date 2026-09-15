@@ -35,6 +35,13 @@ MANIFEST_URL = (
 MAX_MANIFEST_BYTES = 1024 * 1024
 
 
+def _nonnegative_int(value: Any) -> int | None:
+    """Return a JSON integer but reject bools and negative counters."""
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    return value
+
+
 def parse_signed_json(record: dict[str, Any]) -> dict[str, Any]:
     """Verify a referee record before interpreting its JSON text."""
     if record.get("from") != REFEREE_DID:
@@ -104,6 +111,65 @@ def inspect_records(records: list[dict[str, Any]]) -> tuple[dict[str, Any], dict
     return launch_record, latest_notice[0] if latest_notice else None
 
 
+def analyze_status_history(records: list[dict[str, Any]]) -> dict[str, Any]:
+    """Describe signed status continuity without treating window counts as totals.
+
+    Referee process restarts are visible when ``uptime_seconds`` decreases.  The
+    ``counts`` object can reset with the process, whereas ``participants`` has
+    so far remained durable.  Reporting the distinction avoids presenting a
+    per-process counter as a lifetime contest total.
+    """
+    statuses: list[tuple[int, dict[str, Any]]] = []
+    for original in records:
+        record = {key: value for key, value in original.items() if key != "_line_number"}
+        if record.get("from") != REFEREE_DID or "sig" not in record:
+            continue
+        message = parse_signed_json(record)
+        if (
+            message.get("type") == "sonnet.notice.v1"
+            and message.get("subject") == "referee status"
+            and message.get("contest_id") == CONTEST_ID
+            and message.get("referee") == REFEREE_DID
+        ):
+            seq = _nonnegative_int(record.get("seq"))
+            if seq is not None:
+                statuses.append((seq, message))
+
+    statuses.sort(key=lambda item: item[0])
+    restart_sequences: list[int] = []
+    count_reset_sequences: list[int] = []
+    previous: dict[str, Any] | None = None
+    for seq, current in statuses:
+        if previous is not None:
+            previous_uptime = _nonnegative_int(previous.get("uptime_seconds"))
+            current_uptime = _nonnegative_int(current.get("uptime_seconds"))
+            if (
+                previous_uptime is not None
+                and current_uptime is not None
+                and current_uptime < previous_uptime
+            ):
+                restart_sequences.append(seq)
+
+            previous_counts = previous.get("counts")
+            current_counts = current.get("counts")
+            if isinstance(previous_counts, dict) and isinstance(current_counts, dict):
+                shared = previous_counts.keys() & current_counts.keys()
+                if any(
+                    (old := _nonnegative_int(previous_counts[key])) is not None
+                    and (new := _nonnegative_int(current_counts[key])) is not None
+                    and new < old
+                    for key in shared
+                ):
+                    count_reset_sequences.append(seq)
+        previous = current
+
+    return {
+        "verified_statuses": len(statuses),
+        "restart_sequences": restart_sequences,
+        "count_reset_sequences": count_reset_sequences,
+    }
+
+
 def download_manifest() -> bytes:
     request = urllib.request.Request(
         MANIFEST_URL, headers={"User-Agent": "sonnet-contest-verifier/1"}
@@ -148,6 +214,7 @@ def main() -> int:
             raw, generation = download_export(args.base_url, RULES_ROOM)
         records = load_records(raw)
         launch_record, notice_record = inspect_records(records)
+        history = analyze_status_history(records)
         if not args.skip_manifest:
             digest = hashlib.sha256(download_manifest()).hexdigest()
             if digest != MANIFEST_SHA256:
@@ -176,6 +243,20 @@ def main() -> int:
         if isinstance(participants, dict):
             summary = ", ".join(f"{key}={value}" for key, value in sorted(participants.items()))
             print(f"reported participants: {summary}")
+        uptime = _nonnegative_int(status.get("uptime_seconds"))
+        if uptime is not None:
+            print(f"latest referee process uptime: {uptime} seconds")
+        restarts = history["restart_sequences"]
+        resets = history["count_reset_sequences"]
+        if restarts:
+            joined = ", ".join(str(seq) for seq in restarts)
+            print(f"WARNING: referee restart detected before status sequence(s): {joined}")
+        if resets:
+            joined = ", ".join(str(seq) for seq in resets)
+            print(
+                "WARNING: status counts decreased at sequence(s): "
+                f"{joined}; treat counts as process-window metrics, not lifetime totals"
+            )
     return 0
 
 

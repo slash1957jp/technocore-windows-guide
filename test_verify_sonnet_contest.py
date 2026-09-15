@@ -62,6 +62,8 @@ def status() -> dict:
         "contest_id": sonnet.CONTEST_ID,
         "referee": sonnet.REFEREE_DID,
         "participants": {"voter": 2, "writer": 1},
+        "counts": {"handled": 10, "accepted": 8},
+        "uptime_seconds": 100,
     }
 
 
@@ -76,6 +78,40 @@ def test_valid_launch_and_latest_status(monkeypatch):
     )
     assert found_launch["seq"] == 1
     assert found_status["seq"] == 3
+
+
+def test_status_history_detects_restart_and_count_reset(monkeypatch):
+    use_test_referee(monkeypatch)
+    before = status()
+    after = status()
+    after["uptime_seconds"] = 5
+    after["counts"] = {"handled": 2, "accepted": 1}
+    history = sonnet.analyze_status_history(
+        [signed_record(1, launch()), signed_record(2, before), signed_record(3, after)]
+    )
+    assert history == {
+        "verified_statuses": 2,
+        "restart_sequences": [3],
+        "count_reset_sequences": [3],
+    }
+
+
+def test_status_history_ignores_untrusted_and_invalid_counters(monkeypatch):
+    use_test_referee(monkeypatch)
+    first = status()
+    second = status()
+    first["uptime_seconds"] = True
+    second["uptime_seconds"] = 1
+    first["counts"] = {"handled": True}
+    second["counts"] = {"handled": 0}
+    forged = signed_record(4, status())
+    forged["from"] = "did:key:z6MkjjzKLw96nMncMPEnXhhxeFkpHzN3pq2MDD8oMauHFnsn"
+    history = sonnet.analyze_status_history(
+        [signed_record(1, launch()), signed_record(2, first), signed_record(3, second), forged]
+    )
+    assert history["verified_statuses"] == 2
+    assert history["restart_sequences"] == []
+    assert history["count_reset_sequences"] == []
 
 
 def test_forged_referee_is_ignored(monkeypatch):
