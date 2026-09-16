@@ -47,7 +47,12 @@ def launch() -> dict:
         "configuration": {
             "contest_id": sonnet.CONTEST_ID,
             "referee": sonnet.REFEREE_DID,
+            "opening": sonnet.OPENING,
+            "identity_cutoff": sonnet.IDENTITY_CUTOFF,
             "deadline": sonnet.DEADLINE,
+            "prize": sonnet.POEM_PRIZE,
+            "voter_pool": sonnet.VOTER_POOL,
+            "rules_version": sonnet.RULES_VERSION,
             "rooms": {"rules": sonnet.RULES_ROOM},
             "package_fingerprint": {"manifest_sha256": sonnet.MANIFEST_SHA256},
         },
@@ -131,6 +136,29 @@ def test_changed_deadline_is_rejected(monkeypatch):
     except verify_export.VerificationError:
         return
     raise AssertionError("changed deadline must be rejected")
+
+
+def test_changed_identity_cutoff_is_rejected(monkeypatch):
+    use_test_referee(monkeypatch)
+    message = launch()
+    message["configuration"]["identity_cutoff"] += 1
+    try:
+        sonnet.inspect_records([signed_record(1, message)])
+    except verify_export.VerificationError:
+        return
+    raise AssertionError("changed identity cutoff must be rejected")
+
+
+def test_changed_prize_terms_are_rejected(monkeypatch):
+    use_test_referee(monkeypatch)
+    for key in ("prize", "voter_pool"):
+        message = launch()
+        message["configuration"][key] += 1
+        try:
+            sonnet.inspect_records([signed_record(1, message)])
+        except verify_export.VerificationError:
+            continue
+        raise AssertionError(f"changed {key} must be rejected")
 
 
 def test_changed_signed_text_is_rejected(monkeypatch):
