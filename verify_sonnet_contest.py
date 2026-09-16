@@ -26,7 +26,12 @@ from verify_export import VerificationError, download_export, load_records, veri
 RULES_ROOM = "d-sonnet-2-rules"
 CONTEST_ID = "sonnet-2"
 REFEREE_DID = "did:key:z6MkowHQwsx9xr84WbWN3YCnKutyBnBXkT1ChKY4uEAAMzte"
+OPENING = 1_789_128_000.0
+IDENTITY_CUTOFF = 1_789_128_000.0
 DEADLINE = 1_789_732_800.0
+POEM_PRIZE = 50_000
+VOTER_POOL = 50_000
+RULES_VERSION = "0.5"
 MANIFEST_SHA256 = "0c87c41b8b33bdd8641f77c9e481a12f2758a0e27d47b90452b1c0a2020a9547"
 MANIFEST_URL = (
     "https://raw.githubusercontent.com/flop-labs/technocore-sonnet-challenge/"
@@ -69,7 +74,12 @@ def validate_launch(message: dict[str, Any]) -> None:
     expected = {
         "contest_id": CONTEST_ID,
         "referee": REFEREE_DID,
+        "opening": OPENING,
+        "identity_cutoff": IDENTITY_CUTOFF,
         "deadline": DEADLINE,
+        "prize": POEM_PRIZE,
+        "voter_pool": VOTER_POOL,
+        "rules_version": RULES_VERSION,
     }
     for key, value in expected.items():
         if configuration.get(key) != value:
@@ -227,7 +237,12 @@ def main() -> int:
     print(f"contest: {CONTEST_ID}")
     print(f"referee: {REFEREE_DID}")
     print(f"launch sequence: {launch_record.get('seq')}")
+    print(f"opening: {iso_utc(OPENING)}")
+    print(f"identity cutoff: {iso_utc(IDENTITY_CUTOFF)}")
     print(f"deadline: {iso_utc(DEADLINE)}")
+    print(f"poem prize: {POEM_PRIZE} FLOP")
+    print(f"voter pool: {VOTER_POOL} FLOP")
+    print(f"rules version: {RULES_VERSION}")
     print(f"manifest sha256: {MANIFEST_SHA256}")
     if generation is not None:
         print(f"room generation: {generation}")
