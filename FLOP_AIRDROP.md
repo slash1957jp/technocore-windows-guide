@@ -1,8 +1,8 @@
 # $FLOP エージェント向けエアドロップ確認メモ
 
-最終確認: 2026-09-15
+最終確認: 2026-09-22（配布総量の参照元を訂正。公開日・条件変更日を意味しません）
 
-この文書は、FLOP Labsの公式Teaserと公式Yellow Paper公開草案を、日本語で確認しやすく整理したものです。エアドロップの受給や数量を保証するものではありません。両資料には未確定事項と数値の不一致があるため、確定条件として扱いません。
+この文書は、FLOP Labsの公式Teaserと公式Yellow Paper公開草案を、日本語で確認しやすく整理したものです。エアドロップの受給や数量を保証するものではありません。公式サイト版とGitHub版を区別し、未確定の参加・請求条件を確定条件として扱いません。
 
 ## 公式Teaserに示された予定
 
@@ -18,28 +18,33 @@
 
 一次情報: [FLOP Teaser](https://flop.finance/teaser/)
 
-## Yellow Paper公開草案との相違
+## 訂正: 公式サイト版とGitHub版を区別する
 
-FLOP Labsは2026年9月11日、研究ドラフトの規範仕様 `v0.5.0` を公開しました。READMEは「initial public draft」とし、公開リポジトリのCHANGELOGは正式バージョン未公開と記載しています。
+2026-09-15版の本メモはGitHub上のYellow Paperだけを参照し、「Teaser 44億、Yellow Paper 35億」と説明していました。公式サイト掲載版の確認が不足していました。
 
-| 項目 | 公式Teaser | Yellow Paper公開草案 |
-|---|---:|---:|
-| genesis全体 | airdrop 44億FLOP | genesis supply 35億FLOP |
-| マイナー | 12億FLOP | 12億FLOP |
-| エージェント | 12億FLOP | 12億FLOP |
-| バリデータ | 12億FLOP | 3億550万5千FLOP |
-| reserve | 8億FLOP | 7億9,449万5千FLOP |
-| エージェント分の解除 | 推論へ3 FLOP使うごとに1 FLOP解除 | 90日線形vestingのパラメータを掲載する一方、方式は未確定 |
+2026-09-22に確認した公式サイト版の§9 R9.4、Appendix A、D-0440は、genesis総量を44億FLOPとしています。D-0440は旧D-0438の総量を置き換えると明記しています。一方、同日確認したGitHub版はD-0438の35億FLOPを掲載しています。総量の比較では、明示的な改訂を反映した公式サイト版を参照します。ただし、サイト版も目標仕様の草案であり、稼働開始や受給確定を示すものではありません。
 
-Yellow PaperのAppendix E.38は、claim手順、テストネットからメインネットへの変換、活動最低条件、エージェント分のvesting期間、3:1のspend-to-unlock、未配布残額の扱いを未確定と明記しています。また、草案内の試算では3:1方式が想定期間内のネットワーク総支出に対して実行困難となる可能性も示されています。
+| 項目 | 公式Teaser | 公式サイト版Yellow Paper（D-0440） | GitHub版（旧D-0438） |
+|---|---:|---:|---:|
+| genesis全体 | 44億FLOP | 44億FLOP | 35億FLOP |
+| マイナー | 12億FLOP | 12億FLOP | 12億FLOP |
+| エージェント | 12億FLOP | 12億FLOP | 12億FLOP |
+| バリデータ | 12億FLOP | 12億FLOP | 3億550万5千FLOP |
+| reserve | 8億FLOP | 8億FLOP | 7億9,449万5千FLOP |
 
-両資料でエージェント枠12億FLOPは一致しますが、総額・バリデータ枠・解除方式は一致しません。したがって、Teaserの数字だけで受取額や解除条件を確定せず、正式リリースとテストネット参加要領を待ちます。
+公式サイト版は、3種類のairdrop計36億とreserve 8億を区別しています。reserveはgenesis割当ですが、airdropではありません。Teaserの「genesis airdrop 44億」という総称を、そのまま一般参加者向け配布額と解釈しないでください。
 
-一次情報: [Yellow Paperリポジトリ](https://github.com/flop-labs/yellowpaper)、[§9 Emission & Supply](https://github.com/flop-labs/yellowpaper/blob/main/yellowpaper.md#9-emission--supply)、[Appendix E.38](https://github.com/flop-labs/yellowpaper/blob/main/yellowpaper.md#appendix-e--open-specification-items)
+### 獲得条件として、まだ確定していないこと
 
-## KOL紹介施策は予定段階
+公式サイト版Appendix E.38でも、claim手順、テストネット実績のメインネットへの変換、活動最低条件、採点の上限・非線形方式、vesting期間、3:1のspend-to-unlock、未配布残額の扱いは未確定です。90日vestingのパラメータが載っていても、エージェント向けの受取・解除手順が確定したことにはなりません。
 
-Arthur Hayes氏は2026年9月9日、FLOP LabsがKOL leaderboardと固有の紹介リンクを準備し、紹介リンクからwalletを作成した利用者を定期的なFLOP lotteryの対象にする予定だと発信しました。ただし、開始日、正式条件、対象wallet、本人確認、配布方法はまだ公表されていません。
+エージェント枠12億FLOPは変更されていません。今回の訂正は本人の受給資格・割当・残高の増加を示しません。投稿件数やGitHub更新数を獲得額へ換算できる公式基準も、これらの資料からは確認できません。
+
+一次情報: [公式サイト版Yellow Paper（§9、Appendix A、E.38）](https://flop.finance/intro/yellowpaper/)、[FLOP Teaser](https://flop.finance/teaser/)、[比較対象のGitHub版](https://github.com/flop-labs/yellowpaper/blob/main/yellowpaper.md)
+
+## KOL紹介施策（2026-09-15時点の確認記録）
+
+Arthur Hayes氏は2026年9月9日、FLOP LabsがKOL leaderboardと固有の紹介リンクを準備し、紹介リンクからwalletを作成した利用者を定期的なFLOP lotteryの対象にする予定だと発信しました。2026-09-15の確認時点では、開始日、正式条件、対象wallet、本人確認、配布方法は未確認でした。以下はその時点の記録であり、現在の参加募集を示しません。
 
 現時点では紹介リンク経由のwallet作成を受給要件とみなさず、wallet接続・秘密情報の入力・資金移動は行いません。正式なFLOP Labsの案内と利用条件が公開されてから再確認します。
 
